@@ -39,7 +39,7 @@ def cargar(args):
     topologia.main()
     sismo.main()
     datos = fallas.calcular(args.umbral)
-    fallas.actualizar_bd(datos[-1])
+    fallas.actualizar_bd(datos[-1], umbral=args.umbral)
     fallas.escribir_sql(*datos)
     print(f"main.sql generado ({len(datos[-1])} enlaces, umbral {args.umbral} g)")
     cargar_main_sql(ejecutar=False)
@@ -158,6 +158,10 @@ def mapa(args, res=None):
       <span style="color:green">&#9679;</span> recibe
     </div>"""
     else:
+        # Los volcados anteriores a umbral_g siguen siendo consultables.
+        cur.execute("SELECT to_jsonb(p)->>'umbral_g' FROM probabilidad_falla p LIMIT 1")
+        fila = cur.fetchone()
+        umbral = f"{float(fila[0])} g" if fila and fila[0] is not None else "sin registrar"
         panel = f"""
     <div style="position: fixed; bottom: 44px; left: 24px; z-index: 9999; background: white; padding: 10px 14px;
                 border: 1px solid #999; border-radius: 6px; font: 13px/1.4 sans-serif;">
@@ -165,7 +169,7 @@ def mapa(args, res=None):
       Antes del sismo: {r['antes']:.3f}<br>
       Despu&eacute;s del sismo: {r['despues']:.3f} (P5 {r['p05']:.3f} &ndash; P95 {r['p95']:.3f})<br>
       <span style="font-size:11px">Comparaci&oacute;n, 18 ciudades: {rc['antes']:.3f} &rarr; {rc['despues']:.3f}</span><br>
-      <span style="font-size:11px">Umbral {args.umbral} g, {r['n_sim']} simulaciones</span><hr style="margin:6px 0">
+      <span style="font-size:11px">Umbral {umbral}, {r['n_sim']} simulaciones</span><hr style="margin:6px 0">
       <b>P(falla) del enlace</b><br>
       <span style="color:#c0392b">&#9644;</span> &ge; 0.5 &nbsp;
       <span style="color:#e67e22">&#9644;</span> 0.1&ndash;0.5 &nbsp;

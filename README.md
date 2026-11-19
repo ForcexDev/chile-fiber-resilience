@@ -52,6 +52,8 @@ Acciones de `main.py`:
 
 Opciones: `--umbral 0.215` (PGA de daño en g), `--huecos 60` (hueco máximo en km que se cierra con enlaces de continuidad), `--sims 10000`, `--vista red` (genera `mapa_red.html` antes del sismo), `--desde-sql` (restaura directamente `main.sql`), `--no-abrir` (solo genera el HTML sin abrir el navegador).
 
+El mapa muestra el umbral guardado con las probabilidades de la BD. Para cambiar de escenario, ejecuta por ejemplo `python main.py --umbral 0.401`. Al restaurar un volcado antiguo sin umbral, el panel indica «sin registrar».
+
 ## Estructura
 
 ```
@@ -81,4 +83,4 @@ datos/externos/              USGS (GeoJSON y ShakeMap), cables submarinos, Peeri
 | `nodos_clave` | conjunto principal (27, columna `principal`) y comparación (18 ciudades, columna `ciudades`) |
 | `enlaces_red` | enlaces entre nodos de la red (sin ramas muertas, con `prob_falla`) |
 | `sismo`, `ruptura` | evento USGS y plano de ruptura del ShakeMap |
-| `probabilidad_falla` | resumen por enlace de $R_{rup}$, PGA y probabilidad de falla |
+| `probabilidad_falla` | resumen por enlace de $R_{rup}$, PGA, probabilidad de falla y umbral utilizado (g) |

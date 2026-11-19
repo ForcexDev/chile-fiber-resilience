@@ -21,6 +21,16 @@ LAT0 = -36.0
 KM_LAT = 111.2
 KM_LON = 111.2 * math.cos(math.radians(LAT0))
 
+DDL_PROBABILIDAD = """CREATE TABLE probabilidad_falla (
+    id_enlace int PRIMARY KEY REFERENCES enlaces_red(id),
+    tipo text,
+    km float,
+    rrup_km float,
+    pga_g float,
+    prob_falla float,
+    umbral_g float NOT NULL CHECK (umbral_g > 0)
+)"""
+
 TABLAS_SQL = [
     (
         "fibra",
@@ -151,21 +161,15 @@ def calcular(umbral=UMBRAL_G):
     return sid, m, h, umbral, filas
 
 
-def actualizar_bd(filas):
-    """Guarda las probabilidades en probabilidad_falla y actualiza enlaces_red.prob_falla."""
-    cur = conectar().cursor()
-    cur.execute("DROP TABLE IF EXISTS probabilidad_falla")
-    cur.execute("""CREATE TABLE probabilidad_falla (
-                     id_enlace int PRIMARY KEY REFERENCES enlaces_red(id),
-                     tipo text,
-                     km float,
-                     rrup_km float,
-                     pga_g float,
-                     prob_falla float
-                   )""")
-    cur.executemany("INSERT INTO probabilidad_falla VALUES (%s, %s, %s, %s, %s, %s)", filas)
-    cur.executemany("UPDATE enlaces_red SET prob_falla = %s WHERE id = %s",
-                    [(p, i) for i, _, _, _, _, p in filas])
+def actualizar_bd(filas, umbral):
+    """Guarda en una transaccion las probabilidades y el umbral que las genero."""
+    with conectar() as con, con.cursor() as cur:
+        cur.execute("DROP TABLE IF EXISTS probabilidad_falla")
+        cur.execute(DDL_PROBABILIDAD)
+        cur.executemany("INSERT INTO probabilidad_falla VALUES (%s, %s, %s, %s, %s, %s, %s)",
+                        [(*fila, umbral) for fila in filas])
+        cur.execute("""UPDATE enlaces_red e SET prob_falla = p.prob_falla
+                       FROM probabilidad_falla p WHERE p.id_enlace = e.id""")
 
 
 def _sql_val(v, kind="scalar"):
@@ -221,12 +225,10 @@ def escribir_sql(sid, m, h, umbral, filas, ruta="main.sql"):
             _volcar_tabla(cur, f, tabla, ddl, select_sql, kinds, indice_sql)
 
         f.write("-- probabilidad_falla\n")
-        f.write("CREATE TABLE probabilidad_falla (\n"
-                "  id_enlace int PRIMARY KEY REFERENCES enlaces_red(id),\n"
-                "  tipo text,\n  km float,\n  rrup_km float,\n  pga_g float,\n  prob_falla float\n);\n")
+        f.write(DDL_PROBABILIDAD + ";\n")
         f.write("INSERT INTO probabilidad_falla VALUES\n")
-        f.write(",\n".join(f"({i}, '{t}', {km:.3f}, {r:.2f}, {pga:.4f}, {p:.6f})"
-                           for i, t, km, r, pga, p in filas))
+        f.write(",\n".join("(" + ", ".join(_sql_val(v) for v in (*fila, umbral)) + ")"
+                           for fila in filas))
         f.write(";\n")
         f.write("UPDATE enlaces_red e SET prob_falla = p.prob_falla "
                 "FROM probabilidad_falla p WHERE p.id_enlace = e.id;\n")
@@ -235,7 +237,7 @@ def escribir_sql(sid, m, h, umbral, filas, ruta="main.sql"):
 
 def main():
     datos = calcular(float(sys.argv[1]) if len(sys.argv) > 1 else UMBRAL_G)
-    actualizar_bd(datos[-1])
+    actualizar_bd(datos[-1], umbral=datos[3])
     escribir_sql(*datos)
     filas = datos[-1]
     print(f"main.sql: {len(filas)} enlaces, umbral {datos[3]} g")
