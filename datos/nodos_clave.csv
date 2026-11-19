@@ -1,0 +1,19 @@
+nombre,rol,rol_principal,detalle,lat,lon
+Arica,genera,genera,cables SAm-1 y Mistral (submarinecablemap) / capital regional,-18.4783,-70.3126
+Iquique,recibe,recibe,capital regional,-20.2141,-70.1524
+Antofagasta,recibe,recibe,capital regional,-23.6509,-70.3975
+Copiapo,recibe,recibe,capital regional,-27.3668,-70.3323
+La Serena,recibe,recibe,capital regional,-29.9045,-71.2489
+Valparaiso,genera,genera,cables Curie SAm-1 SAC y Mistral (submarinecablemap) / capital regional,-33.0458,-71.6197
+Vina del Mar,intercambia,,MetroPort IX (PeeringDB),-33.0245,-71.5518
+Los Andes,genera,genera,cruce de fibra hacia Argentina por Paso Los Libertadores,-32.8337,-70.5983
+Santiago,intercambia,recibe,PIT Santiago PIT entel ixFabric y Chile IX (PeeringDB) / capital,-33.4378,-70.6505
+Rancagua,recibe,recibe,capital regional,-34.1701,-70.7406
+Talca,recibe,recibe,capital regional,-35.4264,-71.6554
+Chillan,recibe,recibe,capital regional,-36.6066,-72.1034
+Concepcion,intercambia,recibe,PIT Concepcion (PeeringDB) / capital regional,-36.8270,-73.0503
+Temuco,intercambia,recibe,PIT Temuco (PeeringDB) / capital regional,-38.7359,-72.5904
+Valdivia,intercambia,recibe,ixFabric Valdivia (PeeringDB) / capital regional,-39.8142,-73.2459
+Puerto Montt,recibe,recibe,capital regional,-41.4718,-72.9396
+Coyhaique,recibe,recibe,capital regional,-45.5712,-72.0685
+Punta Arenas,intercambia,recibe,PatagoniaIX (PeeringDB) / capital regional,-53.1638,-70.9171

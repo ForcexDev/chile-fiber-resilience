@@ -1,0 +1,10 @@
+services:
+  db:
+    image: pgrouting/pgrouting:16-3.4-3.6.1
+    container_name: yafun-db
+    environment:
+      POSTGRES_DB: yafun
+      POSTGRES_USER: yafun
+      POSTGRES_PASSWORD: yafun
+    ports:
+      - "5433:5432"
