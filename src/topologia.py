@@ -60,7 +60,8 @@ def main():
     cur.execute("""CREATE TABLE enlaces AS
                    SELECT n.id, b.tipo, b.nombre, n.geom::geometry(LineString, 4326) geom
                    FROM base_noded n JOIN base b ON b.id = n.old_id""")
-    cur.execute("ALTER TABLE enlaces ADD PRIMARY KEY (id), ADD source int, ADD target int, ADD km float")
+    cur.execute("ALTER TABLE enlaces ADD PRIMARY KEY (id), ADD source int, ADD target int, "
+                "ADD km float, ADD prob_falla float DEFAULT 0")
     cur.execute("SELECT pgr_createTopology('enlaces', %s, 'geom', 'id')", (TOL,))
 
     # 3. enlaces de continuidad entre componentes (Kruskal sobre la distancia mas corta)
@@ -190,9 +191,10 @@ def construir_enlaces_red(cur):
                 verts.append(x)
                 prev, cur_v = cur_v, x
             cadenas.append((v, cur_v, verts, ids))
-    cur.execute("DROP TABLE IF EXISTS enlaces_red")
+    cur.execute("DROP TABLE IF EXISTS enlaces_red CASCADE")
     cur.execute("""CREATE TABLE enlaces_red (id int PRIMARY KEY, source int, target int, tramos int[],
-                   tipo text, km float, km_supuesto float, geom geometry(MultiLineString, 4326))""")
+                   tipo text, km float, km_supuesto float, prob_falla float DEFAULT 0,
+                   geom geometry(MultiLineString, 4326))""")
     for n, (a, b, _, ids) in enumerate(cadenas, 1):
         cur.execute("""INSERT INTO enlaces_red
                        SELECT %s, %s, %s, %s,
@@ -200,7 +202,7 @@ def construir_enlaces_red(cur):
                                    WHEN bool_and(tipo IN ('continuidad', 'acometida')) THEN 'supuesto'
                                    ELSE 'fibra' END,
                               sum(km), coalesce(sum(km) FILTER (WHERE tipo IN ('continuidad', 'acometida')), 0),
-                              ST_Multi(ST_LineMerge(ST_Collect(geom)))
+                              0.0, ST_Multi(ST_LineMerge(ST_Collect(geom)))
                        FROM enlaces WHERE id = ANY(%s)""", (n, a, b, ids, ids))
     # ids estables: pgr_createTopology no siempre numera igual los vertices, asi que los enlaces
     # se numeran de norte a sur segun su centroide
@@ -208,11 +210,12 @@ def construir_enlaces_red(cur):
                    SELECT row_number() OVER (ORDER BY round(ST_Y(ST_Centroid(geom))::numeric, 6) DESC,
                                                       round(ST_X(ST_Centroid(geom))::numeric, 6),
                                                       round(km::numeric, 4))::int AS id,
-                          source, target, tramos, tipo, km, km_supuesto, geom
+                          source, target, tramos, tipo, km, km_supuesto, prob_falla, geom
                    FROM enlaces_red""")
     cur.execute("DROP TABLE enlaces_red")
     cur.execute("ALTER TABLE enlaces_red_ord RENAME TO enlaces_red")
     cur.execute("ALTER TABLE enlaces_red ADD PRIMARY KEY (id)")
+    cur.execute("ALTER TABLE enlaces_red ALTER COLUMN prob_falla SET DEFAULT 0")
     cur.execute("CREATE INDEX ON enlaces_red USING gist (geom)")
 
 

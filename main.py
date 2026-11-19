@@ -27,23 +27,28 @@ import cargar_fibra  # noqa: E402
 import fallas  # noqa: E402
 import sismo  # noqa: E402
 import topologia  # noqa: E402
-from db import DSN, conectar  # noqa: E402
+from db import DSN, asegurar_bd, conectar  # noqa: E402
 
 
 def cargar(args):
+    if args.desde_sql:
+        cargar_main_sql(ejecutar=True)
+        return
     cargar_fibra.main()
     topologia.HUECO_MAX_KM = args.huecos
     topologia.main()
     sismo.main()
     datos = fallas.calcular(args.umbral)
+    fallas.actualizar_bd(datos[-1])
     fallas.escribir_sql(*datos)
     print(f"main.sql generado ({len(datos[-1])} enlaces, umbral {args.umbral} g)")
-    cargar_main_sql()
+    cargar_main_sql(ejecutar=False)
 
 
-def cargar_main_sql():
+def cargar_main_sql(ejecutar=True):
     cur = conectar().cursor()
-    cur.execute(open("main.sql").read())
+    if ejecutar:
+        cur.execute(open("main.sql").read())
     cur.execute("SELECT count(*), round(avg(prob_falla)::numeric, 3) FROM probabilidad_falla")
     n, p = cur.fetchone()
     print(f"main.sql cargado en la BD: {n} enlaces, probabilidad media {p}")
@@ -178,7 +183,16 @@ def mapa(args, res=None):
 
 def servir(pagina="mapa.html", puerto=8000):
     handler = lambda *a: http.server.SimpleHTTPRequestHandler(*a, directory=os.getcwd())  # noqa: E731
-    srv = http.server.ThreadingHTTPServer(("127.0.0.1", puerto), handler)
+    srv = None
+    for p in range(puerto, puerto + 20):
+        try:
+            srv = http.server.ThreadingHTTPServer(("127.0.0.1", p), handler)
+            puerto = p
+            break
+        except OSError:
+            continue
+    if srv is None:
+        raise SystemExit(f"No se encontro puerto libre desde {puerto}")
     threading.Thread(target=srv.serve_forever, daemon=True).start()
     url = f"http://127.0.0.1:{puerto}/{pagina}"
     print(f"mapa en {url} (Ctrl+C para salir)")
@@ -197,10 +211,13 @@ def main():
     ap.add_argument("--sims", type=int, default=10000)
     ap.add_argument("--vista", choices=["sismo", "red"], default="sismo",
                     help="sismo: probabilidad de falla (mapa.html); red: red antes del sismo (mapa_red.html)")
+    ap.add_argument("--desde-sql", action="store_true",
+                    help="carga la BD directamente desde main.sql en lugar de reprocesar los shapefiles")
     ap.add_argument("--no-abrir", action="store_true", help="no levanta el servidor del mapa")
     args = ap.parse_args()
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     print(f"BD: {DSN.split('password')[0].strip()}")
+    asegurar_bd()
 
     if args.accion in ("todo", "cargar"):
         cargar(args)

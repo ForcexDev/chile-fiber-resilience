@@ -20,9 +20,14 @@ CONJUNTOS = {"principal": "ciudades que generan y reciben + cruces de mayor cent
 
 
 def cargar(cur, conjunto="principal"):
-    cur.execute("""SELECT e.id, e.source, e.target, coalesce(p.prob_falla, 0)
-                   FROM enlaces_red e LEFT JOIN probabilidad_falla p ON p.id_enlace = e.id
-                   WHERE e.source <> e.target ORDER BY e.id""")
+    cur.execute("SELECT to_regclass('probabilidad_falla') IS NOT NULL")
+    if cur.fetchone()[0]:
+        cur.execute("""SELECT e.id, e.source, e.target, coalesce(p.prob_falla, e.prob_falla, 0)
+                       FROM enlaces_red e LEFT JOIN probabilidad_falla p ON p.id_enlace = e.id
+                       WHERE e.source <> e.target ORDER BY e.id""")
+    else:
+        cur.execute("""SELECT id, source, target, coalesce(prob_falla, 0)
+                       FROM enlaces_red WHERE source <> target ORDER BY id""")
     e = np.array(cur.fetchall(), dtype=float)
     assert conjunto in CONJUNTOS
     cur.execute(f"SELECT nombre, vertice, rol FROM nodos_clave WHERE {conjunto} ORDER BY nombre")
